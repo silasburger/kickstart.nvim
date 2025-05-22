@@ -188,10 +188,13 @@ vim.keymap.set('n', '-', '<CMD>Oil<CR>', { desc = 'Open parent directory' })
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
 -- TIP: Disable arrow keys in normal mode
--- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
--- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
--- vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
--- vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
+vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
+vim.keymap.set('n', '<up>', '<cmd>echo "Use k to move!!"<CR>')
+vim.keymap.set('n', '<down>', '<cmd>echo "Use j to move!!"<CR>')
+
+-- Disable default s
+vim.keymap.set('n', 's', '<Nop>', { noremap = true })
 
 -- Keybinds to make split navigation easier.
 --  Use CTRL+<hjkl> to switch between windows
@@ -222,6 +225,20 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
+-- Configure treesitter to highlight go templates
+-- Go templates end like .{ft}.tmpl
+-- vim.treesitter.query.add_directive('inject-go-tmpl!', function(_, _, bufnr, _, metadata)
+--   local fname = vim.fs.basename(vim.api.nvim_buf_get_name(bufnr))
+--   local _, _, ext, _ = string.find(fname, '.*%.(%a+)(%.%a+)')
+--   metadata['injection.language'] = ext
+-- end, {})
+
+vim.filetype.add {
+  extension = {
+    gohtml = 'gotmpl',
+  },
+}
+
 -- [[ Install `lazy.nvim` plugin manager ]]
 --    See `:help lazy.nvim.txt` or https://github.com/folke/lazy.nvim for more info
 local lazypath = vim.fn.stdpath 'data' .. '/lazy/lazy.nvim'
@@ -231,12 +248,9 @@ if not (vim.uv or vim.loop).fs_stat(lazypath) then
   if vim.v.shell_error ~= 0 then
     error('Error cloning lazy.nvim:\n' .. out)
   end
-end
-
----@type vim.Option
-local rtp = vim.opt.rtp
-rtp:prepend(lazypath)
-
+end ---@diagnostic disable-next-line: undefined-field
+vim.opt.rtp:prepend(lazypath)
+--
 -- [[ Configure and install plugins ]]
 --
 --  To check the current status of your plugins, run
@@ -597,8 +611,23 @@ require('lazy').setup({
           --    See `:help CursorHold` for information about when this is executed
           --
           -- When you move your cursor, the highlights will be cleared (the second autocommand).
+          local bufname = vim.api.nvim_buf_get_name(event.buf)
+          local ext = bufname:match '^.+%.(.+)$'
+          local skipExtensions = { 'gohtml' }
+          local function excludeExtension(value, list)
+            for _, v in ipairs(list) do
+              if v == value then
+                return true
+              end
+            end
+            return false
+          end
+
+          local skipable = excludeExtension(ext, skipExtensions)
+          -- Skip highlights for specific extensions
+
           local client = vim.lsp.get_client_by_id(event.data.client_id)
-          if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
+          if not skipable and client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_documentHighlight, event.buf) then
             local highlight_augroup = vim.api.nvim_create_augroup('kickstart-lsp-highlight', { clear = false })
             vim.api.nvim_create_autocmd({ 'CursorHold', 'CursorHoldI' }, {
               buffer = event.buf,
@@ -679,7 +708,41 @@ require('lazy').setup({
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
         -- clangd = {},
-        -- gopls = {},
+        gopls = {
+          cmd = { 'gopls' },
+          filetypes = { 'go', 'gomod', 'gowork', 'gotmpl' },
+          gofumpt = true,
+          codelenses = {
+            gc_details = false,
+            generate = true,
+            regenerate_cgo = true,
+            run_govulncheck = true,
+            test = true,
+            tidy = true,
+            upgrade_dependency = true,
+            vendor = true,
+          },
+          hints = {
+            assignVariableTypes = true,
+            compositeLiteralFields = true,
+            compositeLiteralTypes = true,
+            constantValues = true,
+            functionTypeParameters = true,
+            parameterNames = true,
+            rangeVariableTypes = true,
+          },
+          analyses = {
+            nilness = true,
+            unusedparams = true,
+            unusedwrite = true,
+            useany = true,
+          },
+          usePlaceholders = true,
+          completeUnimported = true,
+          directoryFilters = { '-.git', '-.vscode', '-.idea', '-.vscode-test', '-node_modules' },
+          semanticTokens = true,
+          staticcheck = true,
+        },
         -- pyright = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
@@ -690,7 +753,6 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
-
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -706,7 +768,6 @@ require('lazy').setup({
           },
         },
       }
-
       -- Ensure the servers and tools above are installed
       --
       -- To check the current status of installed tools and/or manually install
@@ -780,7 +841,7 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         javascript = { 'prettierd', 'prettier', stop_after_first = true },
-        go = { 'goimports', 'gofmt' },
+        go = { 'goimports', 'gofumpt' },
       },
     },
   },
@@ -807,12 +868,12 @@ require('lazy').setup({
           -- `friendly-snippets` contains a variety of premade snippets.
           --    See the README about individual language/framework/plugin snippets:
           --    https://github.com/rafamadriz/friendly-snippets
-          -- {
-          --   'rafamadriz/friendly-snippets',
-          --   config = function()
-          --     require('luasnip.loaders.from_vscode').lazy_load()
-          --   end,
-          -- },
+          {
+            'rafamadriz/friendly-snippets',
+            config = function()
+              require('luasnip.loaders.from_vscode').lazy_load()
+            end,
+          },
         },
         opts = {},
       },
@@ -953,7 +1014,27 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'html',
+        'css',
+        'typescript',
+        'json',
+        'go',
+        'gomod',
+        'gowork',
+        'gosum',
+        'gotmpl',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -991,6 +1072,7 @@ require('lazy').setup({
   require 'custom.plugins.harpoon',
   require 'custom.plugins.comment',
   require 'custom.plugins.oil',
+  require 'custom.plugins.hardtime',
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
