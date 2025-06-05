@@ -271,6 +271,7 @@ vim.opt.rtp:prepend(lazypath)
 require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
+  'editorconfig/editorconfig-vim',
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -716,7 +717,7 @@ require('lazy').setup({
         -- clangd = {},
         gopls = {
           cmd = { 'gopls' },
-          filetypes = { 'go', 'gomod', 'gowork', 'gotmpl' },
+          filetypes = { 'go', 'gomod', 'gowork' },
           gofumpt = true,
           codelenses = {
             gc_details = false,
@@ -761,6 +762,9 @@ require('lazy').setup({
         -- But for many setups, the LSP (`ts_ls`) will work just fine
         -- ts_ls = {},
         --
+        html = {
+          filetypes = { 'html', 'gotmpl' },
+        },
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -794,6 +798,10 @@ require('lazy').setup({
         'stylua', -- Used to format Lua code
         'markdownlint-cli2',
         'markdown-toc',
+        'html',
+        'prettier',
+        'goimports',
+        'gofumpt',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -834,7 +842,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true, cpp = true, gotmpl = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -853,6 +861,18 @@ require('lazy').setup({
         javascript = { 'prettierd', 'prettier', stop_after_first = true },
         go = { 'goimports', 'gofumpt' },
         markdown = { 'prettier', 'markdownlint-cli2', 'markdown-toc' },
+        html = { 'prettier' },
+        gotmpl = { 'prettier' },
+      },
+      formatters = {
+        prettier = {
+          prepend_args = function(self, ctx)
+            if vim.bo[ctx.buf].filetype == 'gotmpl' then
+              return { '--parser', 'html' }
+            end
+            return {}
+          end,
+        },
       },
     },
   },
@@ -883,6 +903,8 @@ require('lazy').setup({
             'rafamadriz/friendly-snippets',
             config = function()
               require('luasnip.loaders.from_vscode').lazy_load()
+              -- Load HTML snippets for gotmpl files
+              require('luasnip').filetype_extend('gotmpl', { 'html' })
             end,
           },
         },
