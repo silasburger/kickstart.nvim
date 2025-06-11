@@ -272,6 +272,11 @@ require('lazy').setup({
   -- NOTE: Plugins can be added with a link (or for a github repo: 'owner/repo' link).
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
   'editorconfig/editorconfig-vim',
+  {
+    'pmizio/typescript-tools.nvim',
+    dependencies = { 'nvim-lua/plenary.nvim', 'neovim/nvim-lspconfig' },
+    opts = {},
+  },
 
   -- NOTE: Plugins can also be added by using a table,
   -- with the first argument being the link and the following
@@ -802,6 +807,10 @@ require('lazy').setup({
         'prettier',
         'goimports',
         'gofumpt',
+        -- 'eslint_d', -- Fast eslint daemon for JS/TS linting
+        'prettierd', -- Fast prettier daemon for JS/TS formatting
+        'html',
+        'cssls',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -859,6 +868,9 @@ require('lazy').setup({
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         javascript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
         go = { 'goimports', 'gofumpt' },
         markdown = { 'prettier', 'markdownlint-cli2', 'markdown-toc' },
         html = { 'prettier' },
@@ -1061,6 +1073,8 @@ require('lazy').setup({
         'html',
         'css',
         'typescript',
+        'tsx',
+        'javascript',
         'json',
         'go',
         'gomod',

@@ -8,6 +8,9 @@ return {
       lint.linters_by_ft = {
         markdown = { 'markdownlint-cli2' },
       }
+      -- Explicitly disable typescript linting to avoid conflicts with typescript-tools.nvim
+      lint.linters_by_ft.typescript = {}
+      lint.linters_by_ft.typescriptreact = {}
 
       -- To allow other plugins to add linters to require('lint').linters_by_ft,
       -- instead set linters_by_ft like this:
